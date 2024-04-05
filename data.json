@@ -1,0 +1,66 @@
+{
+    "Genome": {
+        "Produce": {
+            "Grain": 1,
+            "Cotton": 1,
+            "Metal": 1  
+        },
+        
+        "Land_Allocation": {
+            "Grain_Crop": 0.33,
+            "Cotton_Crop": 0.33,
+            "Metal_Mining": 0.34
+        },
+
+        "Production": {
+            "wheat": {
+                "efficiency": 1,
+                "price": 5,
+                "demand": 70
+            },
+            "cloth": {
+                "efficiency": 1,
+                "price": 10,
+                "demand": 50
+            },
+            "tool": {
+                "efficiency": 1,
+                "price": 15,
+                "demand": 20
+            }
+        }
+
+    },
+
+    "initial": {
+        "population": 100,
+        "land_amount": 10, 
+        "_comment" : "1 land amount = 100 population",
+        "budget": 100,
+        "needs": {
+            "wheat":{
+                "need": 5,
+                "utility": 8,
+                "downWeighting": 1,
+                "upWeighting": 3
+            },
+            "cloth":{
+                "need": 2,
+                "utility": 3,
+                "downWeighting": 2,
+                "upWeighting": 2
+            },
+            "tool": {
+                "need": 1,
+                "utility": 1,
+                "downWeighting": 3,
+                "upWeighting": 1
+            }
+        }
+    }
+
+}
+
+
+
+

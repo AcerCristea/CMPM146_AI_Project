@@ -9,9 +9,4 @@ Our group decided to create an economy that meets a society’s specified needs.
 
 The program operates by reading in a Json file. We then combine this information with a genetic algorithms until we find out best sample. After 20 generations, the best scoring genome information is printed out with its land allocation, score, its surplus of items made and its consumption of items (how many people bought).
 
-Colaboration:
-Jsanc189
-
-esaltzherr (Elroy Saltzherr)
-
-joshwidjaja
+Colaboration: Jsanc189, esaltzherr (Elroy Saltzherr), joshwidjaja

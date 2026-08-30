@@ -316,9 +316,12 @@ def fitness(con_genome, consume_dict):
             new_weight = ps_pos_weight
         else:
             new_weight = ps_neg_weight
+        # NOTE: k*(x) + (1-k)*(x) is just x, so the k knob below has no effect
+        # on the score no matter what it is set to. Left as-is to keep scores
+        # comparable with earlier runs -- see the branch notes before changing.
         fitness = k * (con_genome[key] + consume_dict[key]) + con_genome[key] * new_weight \
             + (1-k) * (con_genome[key] + consume_dict[key]) + \
-                          consumption_surplus(consumption_dict[key], needs_data[key]["need"], cs_pos_weight, cs_neg_weight)
+                          consumption_surplus(consume_dict[key], needs_data[key]["need"], cs_pos_weight, cs_neg_weight)
         total_fitness += fitness
    
         
@@ -363,17 +366,26 @@ if __name__ == "__main__":
     
     for i in range(generations):
         sorted_genomes = sorted(genomes.items(), key=lambda item: item[1][1], reverse=True)
-        for j in range(0, len(sorted_genomes), 2):   
+        # step 2 so each pair breeds once; stop at len-1 so an odd population
+        # cannot run off the end of the list
+        for j in range(0, len(sorted_genomes) - 1, 2):
             child = breed_parents(sorted_genomes[j][1][0],sorted_genomes[j+1][1][0])
             child_genome, consumption_dict = run_function(child)
-            
+
             child_score = fitness(child_genome, consumption_dict)
-            
-            minScore = min(genomes[j+1][1],child_score)
-            if(minScore == child_score):
-                continue
-            else:
-                genomes[j+1] = ([child, child_score, genome_consumption, consumption_dict])
+
+            # The weaker parent is the one the child has to beat, and it has to
+            # be looked up by its dictionary key. sorted_genomes is ordered by
+            # fitness while genomes is in insertion order, so indexing genomes
+            # with j+1 compared the child against an unrelated genome and then
+            # overwrote that unrelated genome as well.
+            weaker_key = sorted_genomes[j + 1][0]
+            weaker_score = sorted_genomes[j + 1][1][1]
+
+            if child_score > weaker_score:
+                # store the child's own surplus, not genome_consumption, which
+                # is left over from the last iteration of the setup loop above
+                genomes[weaker_key] = [child, child_score, child_genome, consumption_dict]
 
     final_genomes = sorted(genomes.items(), key=lambda item: item[1][1], reverse=True)
 

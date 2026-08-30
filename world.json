@@ -1,0 +1,118 @@
+{
+  "_comment": "World configuration for the dynamic economy simulation (economy.py).",
+  "simulation": {
+    "ticks": 240,
+    "seed": 7,
+    "population": 100,
+    "total_land": 10,
+    "producers": 24,
+    "evolve_every": 3,
+    "elite_fraction": 0.25,
+    "tournament_size": 3,
+    "mutation_rate": 0.35,
+    "mutation_scale": 0.45,
+    "fitness_memory": 0.35
+  },
+  "market": {
+    "_comment": "Prices are persistent state. They chase excess demand and carry inertia.",
+    "price_adjust_rate": 0.18,
+    "price_smoothing": 0.55,
+    "price_floor_ratio": 0.2,
+    "price_ceiling_ratio": 5.0,
+    "income_per_capita": 18.0
+  },
+  "resources": {
+    "grain_land": {
+      "name": "Grain fields",
+      "unlocked": true
+    },
+    "cotton_land": {
+      "name": "Cotton fields",
+      "unlocked": true
+    },
+    "ore_land": {
+      "name": "Iron mines",
+      "unlocked": true
+    },
+    "mithril_vein": {
+      "name": "Mithril veins",
+      "unlocked": false
+    }
+  },
+  "goods": {
+    "wheat": {
+      "name": "Wheat",
+      "resource": "grain_land",
+      "base_price": 5.0,
+      "yield_per_land": 30.6,
+      "base_need": 2.0,
+      "elasticity": 0.35,
+      "utility": 6.0,
+      "spoilage": 0.3
+    },
+    "cloth": {
+      "name": "Cloth",
+      "resource": "cotton_land",
+      "base_price": 10.0,
+      "yield_per_land": 15.3,
+      "base_need": 0.35,
+      "elasticity": 1.0,
+      "utility": 3.0,
+      "spoilage": 0.06
+    },
+    "tool": {
+      "name": "Iron tool",
+      "resource": "ore_land",
+      "base_price": 15.0,
+      "yield_per_land": 10.2,
+      "base_need": 0.12,
+      "elasticity": 1.6,
+      "utility": 1.6,
+      "spoilage": 0.02
+    },
+    "mithril_tool": {
+      "name": "Mithril tool",
+      "resource": "mithril_vein",
+      "base_price": 26.0,
+      "yield_per_land": 5.88,
+      "base_need": 0.0,
+      "elasticity": 1.4,
+      "utility": 4.0,
+      "spoilage": 0.02,
+      "available": false
+    }
+  },
+  "events": [
+    {
+      "tick": 60,
+      "type": "disaster",
+      "name": "Crop blight",
+      "target": "grain_land",
+      "efficiency_mult": 0.3,
+      "duration": 45,
+      "recovery": "linear",
+      "flavor": "A blight sweeps the grain fields. Yields collapse."
+    },
+    {
+      "tick": 120,
+      "type": "discovery",
+      "name": "Mithril strike",
+      "unlocks_resource": "mithril_vein",
+      "introduces": "mithril_tool",
+      "substitutes_for": "tool",
+      "demand_capture": 0.8,
+      "adoption_ticks": 25,
+      "new_need": 0.1,
+      "flavor": "Prospectors strike mithril. It outclasses iron for toolmaking."
+    },
+    {
+      "tick": 175,
+      "type": "demand_shock",
+      "name": "War declared",
+      "target": "cloth",
+      "demand_mult": 2.6,
+      "duration": 40,
+      "flavor": "War breaks out. The army buys every bolt of cloth for uniforms."
+    }
+  ]
+}

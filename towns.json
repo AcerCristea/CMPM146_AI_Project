@@ -1,0 +1,192 @@
+{
+  "_comment": "Three towns with different land quality, connected by trade routes. Used by trade.py.",
+  "simulation": {
+    "ticks": 240,
+    "seed": 7,
+    "population": 100,
+    "total_land": 10,
+    "producers": 20,
+    "evolve_every": 3,
+    "elite_fraction": 0.25,
+    "tournament_size": 3,
+    "mutation_rate": 0.35,
+    "mutation_scale": 0.45,
+    "fitness_memory": 0.35
+  },
+  "market": {
+    "price_adjust_rate": 0.18,
+    "price_smoothing": 0.55,
+    "price_floor_ratio": 0.2,
+    "price_ceiling_ratio": 5.0,
+    "income_per_capita": 18.0
+  },
+  "trade": {
+    "_comment": "Merchants buy where a good is cheap and carry it where it is dear.",
+    "merchants": 14,
+    "starting_gold": 1500.0,
+    "cargo_capacity": 220.0,
+    "min_margin": 0.1,
+    "margin_jitter": 0.06,
+    "transport_cost_per_leg": 0.12,
+    "slippage": 0.02,
+    "max_buy_fraction": 0.7,
+    "patience": 4,
+    "export_bid_cap": 0.6,
+    "tax_rate": 0.04,
+    "home_tribute": 0.15,
+    "reputation_window": 30,
+    "reputation_smoothing": 0.05
+  },
+  "towns": {
+    "riverfold": {
+      "name": "Riverfold",
+      "population": 140,
+      "land": 13,
+      "efficiency": {
+        "grain_land": 1.4,
+        "cotton_land": 0.85,
+        "ore_land": 0.6,
+        "mithril_vein": 0.5
+      }
+    },
+    "loomhaven": {
+      "name": "Loomhaven",
+      "population": 110,
+      "land": 9,
+      "efficiency": {
+        "grain_land": 0.8,
+        "cotton_land": 1.55,
+        "ore_land": 0.85,
+        "mithril_vein": 0.7
+      }
+    },
+    "ashmoor": {
+      "name": "Ashmoor",
+      "population": 90,
+      "land": 8,
+      "efficiency": {
+        "grain_land": 0.55,
+        "cotton_land": 0.7,
+        "ore_land": 1.5,
+        "mithril_vein": 1.7
+      }
+    }
+  },
+  "routes": [
+    [
+      "riverfold",
+      "loomhaven",
+      2
+    ],
+    [
+      "loomhaven",
+      "ashmoor",
+      2
+    ],
+    [
+      "riverfold",
+      "ashmoor",
+      3
+    ]
+  ],
+  "resources": {
+    "grain_land": {
+      "name": "Grain fields",
+      "unlocked": true
+    },
+    "cotton_land": {
+      "name": "Cotton fields",
+      "unlocked": true
+    },
+    "ore_land": {
+      "name": "Iron mines",
+      "unlocked": true
+    },
+    "mithril_vein": {
+      "name": "Mithril veins",
+      "unlocked": false
+    }
+  },
+  "goods": {
+    "wheat": {
+      "name": "Wheat",
+      "resource": "grain_land",
+      "base_price": 5.0,
+      "yield_per_land": 30.6,
+      "base_need": 1.4,
+      "elasticity": 0.35,
+      "utility": 6.0,
+      "spoilage": 0.3
+    },
+    "cloth": {
+      "name": "Cloth",
+      "resource": "cotton_land",
+      "base_price": 10.0,
+      "yield_per_land": 15.3,
+      "base_need": 0.45,
+      "elasticity": 1.0,
+      "utility": 3.0,
+      "spoilage": 0.06
+    },
+    "tool": {
+      "name": "Iron tool",
+      "resource": "ore_land",
+      "base_price": 15.0,
+      "yield_per_land": 10.2,
+      "base_need": 0.18,
+      "elasticity": 1.6,
+      "utility": 1.6,
+      "spoilage": 0.02
+    },
+    "mithril_tool": {
+      "name": "Mithril tool",
+      "resource": "mithril_vein",
+      "base_price": 26.0,
+      "yield_per_land": 5.88,
+      "base_need": 0.0,
+      "elasticity": 1.4,
+      "utility": 4.0,
+      "spoilage": 0.02,
+      "available": false
+    }
+  },
+  "events": [
+    {
+      "tick": 60,
+      "type": "disaster",
+      "name": "Crop blight",
+      "town": "riverfold",
+      "target": "grain_land",
+      "efficiency_mult": 0.3,
+      "duration": 45,
+      "recovery": "linear",
+      "flavor": "Blight hits Riverfold, the breadbasket. Only Riverfold's fields fail."
+    },
+    {
+      "tick": 120,
+      "type": "discovery",
+      "name": "Mithril strike",
+      "town": "ashmoor",
+      "unlocks_resource": "mithril_vein",
+      "introduces": "mithril_tool",
+      "substitutes_for": "tool",
+      "demand_capture": 0.6,
+      "adoption_ticks": 25,
+      "new_need": 0.1,
+      "flavor": "Ashmoor strikes mithril. Only Ashmoor can mine it; everyone wants it."
+    },
+    {
+      "tick": 175,
+      "type": "demand_shock",
+      "name": "War declared",
+      "targets": {
+        "cloth": 2.4,
+        "tool": 2.2,
+        "mithril_tool": 2.2
+      },
+      "income_mult": 1.35,
+      "duration": 40,
+      "flavor": "War. The crown buys uniforms AND weapons, and spends borrowed money doing it."
+    }
+  ]
+}

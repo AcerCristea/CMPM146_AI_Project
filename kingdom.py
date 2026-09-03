@@ -240,6 +240,14 @@ QUESTS = {
 }
 
 
+# What an adventurer can carry. Better metal means the risky jobs go wrong
+# less often -- which, in this sim, means fewer burned fields.
+GEAR = {
+    "iron":    {"name": "iron kit",    "bonus": 0.00, "metal": None,           "units": 0},
+    "mithril": {"name": "mithril kit", "bonus": 0.15, "metal": "mithril_tool", "units": 12},
+}
+
+
 # --------------------------------------------------------------------------
 # the world outside the border
 # --------------------------------------------------------------------------
@@ -331,6 +339,10 @@ class Kingdom:
         self.stall_fraction = pcfg.get("stall_fraction", 0.18)
 
         seed_base = sim["seed"] if seed is None else seed
+        warm = sim.get("warmup_days", 40)
+        for t in range(-warm, 0):
+            self.town.step(t)
+
         self.foreign = ForeignMarket(self.town, config.get("foreign_market", {}),
                                      random.Random(seed_base + 1))
         self.rumours = RumourMill(self.rng, config.get("rumours", {}))
@@ -341,6 +353,17 @@ class Kingdom:
         # can be replayed without them, which is the only honest way to
         # answer 'how much of this was me?'
         self.footprints = []
+        # The loop that makes playing well pay: wages track how well the
+        # town is doing, and gear unlocks when the town finds the metal.
+        wcfg = config.get("wages", {})
+        self.wage_norm = wcfg.get("norm", 15.0)
+        self.wage_floor = wcfg.get("floor", 0.75)
+        self.wage_ceiling = wcfg.get("ceiling", 2.0)
+        self.wage_sensitivity = wcfg.get("sensitivity", 2.5)
+        self.gear = "iron"
+        self.earned = 0.0
+        self.wage_log = []
+        self.last_pay = 0.0
         # You are a person in this town, not a spreadsheet above it.
         self.standing = 0            # what the town thinks of you
         self.food_spend = 0.0        # what living here has cost you
@@ -417,6 +440,55 @@ class Kingdom:
         good.inventory += filled           # extra supply pushes the price down
         self.player.ledger.append(Trade(tick, "sell", good_key, filled, unit, revenue))
         return {"filled": filled, "unit_price": unit, "revenue": revenue}
+
+    # -- what the town gives back ------------------------------------------
+
+    def prosperity(self, days=30):
+        hist = self.town.history["real_consumption"]
+        if not hist:
+            return self.wage_norm
+        window = hist[-days:]
+        return sum(window) / len(window)
+
+    def wage_multiplier(self):
+        """How much work pays here, against an ordinary town.
+
+        A town whose people are eating fifteen percent better has fifteen
+        percent more to spend, and the guilds pay accordingly. This is the
+        one loop that runs the right way in the sim: shore a shaft, and the
+        smiths are hiring at better rates for years. Cheaper gear does not
+        work as a reward -- prices spring back -- but wages do not, because
+        they follow prosperity, which is the thing that actually accumulates.
+        """
+        ratio = self.prosperity() / max(self.wage_norm, 1e-6)
+        mult = 1.0 + self.wage_sensitivity * (ratio - 1.0)
+        return clamp(mult, self.wage_floor, self.wage_ceiling)
+
+    def gear_bonus(self):
+        return GEAR[self.gear]["bonus"]
+
+    def gear_price(self, key):
+        spec = GEAR[key]
+        good = self.town.goods.get(spec["metal"]) if spec["metal"] else None
+        if good is None or not good.available:
+            return None
+        return good.price * spec["units"]
+
+    def buy_gear(self, key, tick):
+        price = self.gear_price(key)
+        if price is None:
+            return {"ok": False, "reason": "nobody here works that metal yet"}
+        if price > self.player.gold:
+            return {"ok": False, "reason": "it costs %.0fg and you have %.0fg" % (
+                price, self.player.gold)}
+        self.player.gold -= price
+        self.gear = key
+        # A sword is a dozen tools' worth of metal, and that is demand.
+        self.town.extra_demand[GEAR[key]["metal"]] += GEAR[key]["units"]
+        self.player.ledger.append(Trade(tick, "buy", GEAR[key]["metal"],
+                                        GEAR[key]["units"], price / GEAR[key]["units"],
+                                        -price))
+        return {"ok": True, "price": price}
 
     # -- doing things to the world -----------------------------------------
 
@@ -667,7 +739,7 @@ OUTINGS = [
         hook="The factor wants his money. The weaver wants another month.",
         outcomes=[
             Outcome("You take the looms. The factor pays. The weaver does not weave.",
-                    pay=85,
+                    pay=85, chance=0.5,
                     event=_eff("cotton_land", 0.94, 30, "Looms seized",
                                "They took the looms off a weaver in the lower town.")),
             Outcome("You pay it yourself and say nothing.", pay=-60),
@@ -795,13 +867,22 @@ class Board:
 
 def resolve(kingdom, outing, tick):
     """Do the outing. Some of them do not go the way anyone intended."""
+    bonus = kingdom.gear_bonus()
     outcome = outing.outcomes[-1]
     for candidate in outing.outcomes:
-        if candidate.chance >= 1.0 or kingdom.rng.random() < candidate.chance:
+        chance = candidate.chance
+        if chance < 1.0:
+            chance = min(0.95, chance + bonus)   # better kit, fewer accidents
+        if chance >= 1.0 or kingdom.rng.random() < chance:
             outcome = candidate
             break
 
-    kingdom.player.gold += outcome.pay
+    mult = kingdom.wage_multiplier()
+    pay = outcome.pay * mult if outcome.pay > 0 else outcome.pay
+    kingdom.player.gold += pay
+    kingdom.earned += max(0.0, pay)
+    kingdom.wage_log.append(mult)
+    kingdom.last_pay = pay
     if outcome.grant:
         for key, qty in outcome.grant.items():
             kingdom.player.inventory[key] = kingdom.player.holding(key) + qty
@@ -896,6 +977,30 @@ def show_town(kingdom, day):
         drift = (g.price / g.base_price - 1.0) * 100.0
         print("  %-14s %9.2fg %10.0f%%" % (g.name, g.price, drift))
     print("  %-14s %9.0fg" % ("your purse", kingdom.player.gold))
+    print("  %-14s %9s   work pays %+.0f%% here" % (
+        "carrying", GEAR[kingdom.gear]["name"], (kingdom.wage_multiplier() - 1) * 100))
+
+
+def visit_smith(kingdom, day, policy):
+    """If the town has found a better metal, the smith will sell you kit in it."""
+    if kingdom.gear != "iron":
+        return
+    price = kingdom.gear_price("mithril")
+    if price is None:
+        return
+    print()
+    print("  The smith has mithril kit on the bench. %.0fg, at today's price." % price)
+    print("  It would make the dangerous work go wrong less often.")
+    if policy == "ask":
+        answer = ask("  Buy it? (y/n)  > ")
+        want = answer.lower().startswith("y")
+    else:
+        # a sensible adventurer buys it once it is comfortably affordable
+        want = kingdom.player.gold >= price * 2.0
+        print("  > %s" % ("yes" if want else "not yet"))
+    if want:
+        res = kingdom.buy_gear("mithril", day)
+        print("  >>  %s" % ("bought, %.0fg" % res["price"] if res["ok"] else res["reason"]))
 
 
 POLICIES = {
@@ -978,7 +1083,12 @@ def play(kingdom, days, outing_days=5, town_every=5, policy="ask"):
             print("      %s" % chosen.title)
         print("      %s" % outcome.text)
         if outcome.pay:
-            print("      %+dg" % outcome.pay)
+            mult = kingdom.wage_log[-1] if kingdom.wage_log else 1.0
+            note = ""
+            if outcome.pay > 0 and abs(mult - 1.0) >= 0.05:
+                note = "  (%s rates, %+.0f%%)" % (
+                    "good" if mult > 1 else "poor", (mult - 1) * 100)
+            print("      %+.0fg%s" % (kingdom.last_pay, note))
 
         # the days pass while you are out in the hills
         for _ in range(outing_days):
@@ -994,6 +1104,7 @@ def play(kingdom, days, outing_days=5, town_every=5, policy="ask"):
 
         if turn % town_every == 0:
             show_town(kingdom, day)
+            visit_smith(kingdom, day, policy)
 
     return day
 
@@ -1033,6 +1144,11 @@ def settle_up(kingdom, days, config, seed, outing_days, policy="ask", asked_days
                                kingdom.player.net_worth(town)))
     print("  %-26s %10d" % ("outings taken", len(kingdom.jobs_taken)))
     print("  %-26s %10d" % ("that left a mark", len(kingdom.footprints)))
+    if kingdom.wage_log:
+        avg = sum(kingdom.wage_log) / len(kingdom.wage_log)
+        print("  %-26s %10.0fg  at %+.0f%% on ordinary rates" % (
+            "earned from work", kingdom.earned, (avg - 1) * 100))
+    print("  %-26s %10s" % ("carrying", GEAR[kingdom.gear]["name"]))
     print()
     print("  %-26s %10d" % ("this year was seed", seed))
     again = "python kingdom.py --seed %d --days %d" % (seed, asked_days or days)

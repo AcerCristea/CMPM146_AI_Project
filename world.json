@@ -11,7 +11,8 @@
     "tournament_size": 3,
     "mutation_rate": 0.35,
     "mutation_scale": 0.45,
-    "fitness_memory": 0.35
+    "fitness_memory": 0.35,
+    "warmup_days": 40
   },
   "market": {
     "_comment": "Prices are persistent state. They chase excess demand and carry inertia.",
@@ -141,5 +142,12 @@
     "rumour_price_window": 7,
     "rumour_price_threshold": 0.15,
     "rumour_false_rate": 0.12
+  },
+  "wages": {
+    "_comment": "Work pays in proportion to how well the town is doing. norm = goods per head in an ordinary town; sensitivity = how much harder wages swing than consumption.",
+    "norm": 15.0,
+    "floor": 0.75,
+    "ceiling": 2.0,
+    "sensitivity": 2.5
   }
 }

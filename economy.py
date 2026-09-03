@@ -169,6 +169,11 @@ class Town:
         # It feeds the price signal, which is how a shortage in one town
         # makes itself felt in the towns that supply it.
         self.merchant_demand = {k: 0.0 for k in self.goods}
+        # Demand from outside the town's own households -- the player
+        # placing an order, a foreign buyer taking an export. Same job as
+        # merchant_demand: it has to reach the price, or a player could
+        # buy out the granary and the market would never notice.
+        self.extra_demand = {k: 0.0 for k in self.goods}
         # Coin in the town coffers, from taxing trade that happens here
         # and from tribute its own merchants send home.
         self.treasury = 0.0
@@ -196,6 +201,7 @@ class Town:
             "inventory": {k: [] for k in self.goods},
             "allocation": {r: [] for r in self.resources},
             "available": {k: [] for k in self.goods},
+            "unmet_units": {k: [] for k in self.goods},
             "real_consumption": [],
             "treasury": [],
             "reputation": [],
@@ -431,7 +437,9 @@ class Town:
         for g in self.active_goods():
             # Export demand counts as demand. Without this, merchants could
             # strip a town bare and its prices would never notice.
-            w = wanted[g.key] + self.merchant_demand.get(g.key, 0.0)
+            w = (wanted[g.key]
+                 + self.merchant_demand.get(g.key, 0.0)
+                 + self.extra_demand.get(g.key, 0.0))
             s = supply[g.key]
             scale = max(w, s, 1e-6)
             excess = clamp((w - s) / scale, -1.0, 1.0)
@@ -517,6 +525,10 @@ class Town:
         for r in self.resources:
             self.history["allocation"][r].append(agg[r])
         self.history["unmet"].append(unmet)
+        for k in self.goods:
+            self.history["unmet_units"][k].append(
+                max(0.0, wanted.get(k, 0.0) - sold.get(k, 0.0)))
+        self.extra_demand = {k: 0.0 for k in self.goods}
         # Goods enjoyed per head, priced at base so inflation cannot fake it.
         self.history["real_consumption"].append(
             sum(sold.get(k, 0.0) * g.base_price for k, g in self.goods.items())

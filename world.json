@@ -114,5 +114,32 @@
       "duration": 40,
       "flavor": "War breaks out. The army buys every bolt of cloth for uniforms."
     }
-  ]
+  ],
+  "country": {
+    "name": "Aldermere"
+  },
+  "player": {
+    "_comment": "You are one person: small orders, and you eat every day.",
+    "starting_gold": 2000.0,
+    "max_order_fraction": 0.28,
+    "spread": 0.03,
+    "stall_fraction": 0.18,
+    "rations_per_day": 2.0
+  },
+  "foreign_market": {
+    "_comment": "One abstracted partner beyond the border. Anchors local prices.",
+    "enabled": true,
+    "freight_band": 0.14,
+    "max_fraction": 0.22,
+    "drift": 0.012,
+    "mean_reversion": 0.02
+  },
+  "rumours": {
+    "_comment": "Word travels slowly, gets exaggerated, and is sometimes wrong.",
+    "rumour_delay": 3,
+    "rumour_delay_jitter": 3,
+    "rumour_price_window": 7,
+    "rumour_price_threshold": 0.15,
+    "rumour_false_rate": 0.12
+  }
 }
